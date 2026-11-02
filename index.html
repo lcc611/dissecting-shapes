@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>分割大師</title>
+<style>
+/* Layout: 卡通遊戲畫面 — 粗黑邊＋實色投影的「貼紙」風格；左邊方格紙關卡，右邊任務卡和小助手「格仔仔」；每個模式有自己的主色 */
+:root{
+  color-scheme:light;
+  --sky1:#BFEAFF; --sky2:#FFF0C7; --sheet:#FFFFFF; --cream:#FFFBEF;
+  --ink:#26285E; --muted:#5D6290; --line:#26285E;
+  --orange:#FF8A3D; --blue:#3D8BFF; --purple:#9B5CFF; --green:#22B573; --pink:#FF4F8B; --yellow:#FFC93C;
+  --mc:var(--orange); --mc-soft:#FFE6D3;
+  --grid:#B5DCF2; --poly:#E8F5FF; --cut:#FF3D7F; --dot:#4C5C9A;
+  --ok:#14915A; --ok-bg:#DDF7E9; --bad:#D9442B; --bad-bg:#FFE4DC; --star:#FFB800;
+  --ref:#3D8BFF; --mov:#FF9F1C; --ring:#FF3D7F;
+  --t-tri:#FF7B6B; --t-sq:#FFC93C; --t-rect:#4FA8FF; --t-para:#3CC47C; --t-trap:#A98BFF; --t-rtrap:#8F6BFF; --t-itrap:#D2A8FF; --t-rh:#2EC4B6;
+  --t-pent:#FF8FC8; --t-hex:#8FA6C8; --t-oth:#B3ADA3;
+  --f-fun:"Noto Sans TC","PingFang HK","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-hand:"LXGW WenKai TC","Kaiti TC","STKaiti","KaiTi",serif;
+  --pop:0 5px 0 var(--line);
+}
+body[data-mode="guide"]{--mc:var(--blue);--mc-soft:#DCEBFF}
+body[data-mode="same"]{--mc:var(--purple);--mc-soft:#EDE2FF}
+[hidden]{display:none!important}
+html{box-sizing:border-box;height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;color:var(--ink);font-family:var(--f-fun);font-size:16px;font-weight:500;
+  background-color:var(--sky1);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='4' stroke-linejoin='round' opacity='.55'%3E%3Cpath d='M30 60 L60 15 L90 60Z'/%3E%3Crect x='140' y='30' width='40' height='40' rx='4' transform='rotate(15 160 50)'/%3E%3Cpath d='M40 150 h50 l-15 35 h-50Z'/%3E%3Cpath d='M150 140 h45 l15 40 h-75Z'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(170deg,var(--sky1),var(--sky2));
+  background-attachment:fixed;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.app{height:100%;max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-block:10px}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px}
+.score{margin-right:auto}
+h1{margin:0;display:flex;gap:5px;align-items:center}
+h1 .tile{font-family:var(--f-fun);font-weight:900;font-size:24px;color:#fff;width:42px;height:42px;display:grid;place-items:center;border:3px solid var(--line);border-radius:12px;box-shadow:0 4px 0 var(--line);text-shadow:0 2px 0 rgba(38,40,94,.35)}
+h1 .tile:nth-child(1){background:var(--orange);transform:rotate(-6deg)}
+h1 .tile:nth-child(2){background:var(--blue);transform:rotate(4deg) translateY(-3px)}
+h1 .tile:nth-child(3){background:var(--purple);transform:rotate(-3deg)}
+h1 .tile:nth-child(4){background:var(--green);transform:rotate(6deg) translateY(-2px)}
+.modes{display:flex;gap:8px;flex-wrap:wrap}
+.modes button{font:inherit;font-size:15px;font-weight:900;border:3px solid var(--line);background:var(--sheet);color:var(--ink);padding:4px 11px 4px 6px;border-radius:14px;cursor:pointer;min-height:48px;display:flex;align-items:center;gap:8px;box-shadow:var(--pop);transition:transform .12s}
+.modes button svg{width:28px;height:28px;flex:none}
+.modes button[data-mode="dash"][aria-pressed="true"]{background:var(--orange);color:#fff}
+.modes button[data-mode="guide"][aria-pressed="true"]{background:var(--blue);color:#fff}
+.modes button[data-mode="same"][aria-pressed="true"]{background:var(--purple);color:#fff}
+.modes button[aria-pressed="true"]{transform:translateY(-3px);box-shadow:0 8px 0 var(--line)}
+.score{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge{display:flex;align-items:center;gap:6px;background:var(--yellow);border:3px solid var(--line);border-radius:999px;padding:3px 14px 3px 4px;box-shadow:0 4px 0 var(--line);font-weight:900;font-size:22px;font-variant-numeric:tabular-nums}
+.badge svg{width:34px;height:34px}
+.prog{display:flex;flex-direction:column;gap:3px;min-width:105px;font-size:13px;font-weight:700;color:var(--ink)}
+.prog .bar{height:14px;border:3px solid var(--line);border-radius:999px;background:var(--sheet);overflow:hidden}
+.prog .bar i{display:block;height:100%;width:0;background:repeating-linear-gradient(-45deg,var(--green) 0 8px,#4fd393 8px 16px);transition:width .5s}
+.mini{font:inherit;font-size:13px;font-weight:700;border:2.5px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:4px 10px;cursor:pointer;min-height:38px}
+.mini.warn{background:var(--bad-bg);color:var(--bad)}
+.stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);gap:16px}
+.board{background:var(--sheet);border:3px solid var(--line);border-radius:24px;box-shadow:0 7px 0 var(--line);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.boardhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--mc);color:#fff;padding:8px 14px;border-bottom:3px solid var(--line)}
+.level{font-weight:900;font-size:18px;display:flex;align-items:baseline;gap:6px;text-shadow:0 2px 0 rgba(38,40,94,.3)}
+.level b{font-size:28px;font-variant-numeric:tabular-nums}
+.level small{font-size:15px;opacity:.9}
+.chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.src,.lv{border:2.5px solid var(--line);border-radius:999px;padding:2px 12px;font-size:14px;font-weight:700;background:var(--sheet);color:var(--ink)}
+.lv{letter-spacing:.05em}
+.lv1 .s{color:var(--green)} .lv2 .s{color:var(--star)} .lv3 .s{color:var(--pink)}
+.lv .off{color:#D4D6E6}
+.gotstar{color:var(--yellow);font-weight:900;font-size:20px;-webkit-text-stroke:1px var(--line)}
+.paper{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 12px 8px;background:var(--cream)}
+#svg{flex:1;min-height:0;width:100%;touch-action:manipulation;display:block}
+.hint{font-size:15px;font-weight:700;color:var(--muted);text-align:center;min-height:22px}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;font-size:13px;font-weight:700;color:var(--muted);padding-top:4px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:15px;height:15px;border-radius:4px;display:inline-block;border:2px solid var(--line)}
+.panel{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0;overflow:auto;padding:2px 2px 8px}
+.card{background:var(--sheet);border:3px solid var(--line);border-radius:22px;box-shadow:0 6px 0 var(--line);padding:12px 16px 12px;position:relative}
+.eyebrow{display:inline-block;font-size:14px;font-weight:900;color:#fff;background:var(--mc);border:2.5px solid var(--line);border-radius:999px;padding:2px 12px;transform:rotate(-2deg)}
+.instr{font-family:var(--f-hand);font-weight:700;font-size:27px;line-height:1.45;margin:6px 0 6px;touch-action:none;cursor:pointer}
+.ch{border-block:3px solid transparent}
+.ch.m2{border-color:var(--ring) transparent}
+.ch.cs{border-left:3px solid var(--ring);border-radius:999px 0 0 999px;padding-left:3px}
+.ch.ce{border-right:3px solid var(--ring);border-radius:0 999px 999px 0;padding-right:3px}
+.ch.cs.ce{border-radius:999px}
+.pens{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;padding:6px 8px;background:var(--mc-soft);border-radius:14px}
+.pens .lab{font-size:14px;font-weight:900;color:var(--ink);margin-right:2px}
+.pen,.penclr{font:inherit;font-size:14px;font-weight:700;min-height:38px;padding:4px 12px;border-radius:999px;border:2.5px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.pen[aria-pressed="true"]{background:var(--ink);color:#fff}
+.pen i{width:16px;height:16px;display:inline-block}
+.pen .sw2{border:3px solid var(--ring);border-radius:50%;background:#fff} .pen .sw0{background:#FFB3C9;border:2px solid var(--line);border-radius:4px}
+.tip{margin:0;color:var(--muted);font-size:15px;font-weight:500;line-height:1.6}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{font:inherit;font-size:16px;font-weight:700;line-height:1.35;min-height:62px;border-radius:16px;border:3px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer;padding:8px 10px;text-align:left;display:flex;gap:8px;align-items:center;box-shadow:0 4px 0 var(--line)}
+.opt .k{flex:none;width:30px;height:30px;border-radius:10px;background:var(--mc);color:#fff;font-weight:900;display:grid;place-items:center;font-size:16px;border:2.5px solid var(--line)}
+.opt.right{background:var(--ok-bg)} .opt.right .k{background:var(--green)}
+.opt.wrong{background:var(--bad-bg);opacity:.7;text-decoration:line-through;box-shadow:none;transform:translateY(4px)}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{font:inherit;font-size:18px;font-weight:900;min-height:54px;border-radius:16px;border:3px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer;padding:6px 12px;box-shadow:var(--pop);transition:transform .08s,box-shadow .08s}
+.btn:active:not(:disabled),.opt:active:not(:disabled),.modes button:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line)}
+.btn.primary{background:var(--mc);color:#fff;text-shadow:0 2px 0 rgba(38,40,94,.3)}
+.btn.go{background:var(--green);color:#fff;text-shadow:0 2px 0 rgba(38,40,94,.3)}
+.btn.soft{background:var(--mc-soft)}
+.btn.wide{grid-column:1/-1}
+.btn:disabled,.opt:disabled{cursor:default}
+.btn:disabled{opacity:.45;box-shadow:0 2px 0 var(--line);transform:translateY(3px)}
+.btn:focus-visible,.modes button:focus-visible,.dots button:focus-visible,.opt:focus-visible,.mini:focus-visible,.pen:focus-visible,.penclr:focus-visible{outline:4px solid var(--pink);outline-offset:3px}
+.talk{display:flex;gap:10px;align-items:flex-end}
+.buddy{width:78px;height:86px;flex:none}
+.buddy .m-happy,.buddy .m-think,.buddy .cheek,.buddy .brow{display:none}
+.buddy.happy .m-idle,.buddy.think .m-idle{display:none}
+.buddy.happy .m-happy,.buddy.happy .cheek{display:inline}
+.buddy.think .m-think,.buddy.think .brow{display:inline}
+.buddy.happy{animation:hop .6s ease}
+.buddy.think{animation:tilt .6s ease}
+@keyframes hop{0%,100%{transform:translateY(0)}35%{transform:translateY(-14px) rotate(-6deg)}65%{transform:translateY(0) rotate(4deg)}}
+@keyframes tilt{0%,100%{transform:rotate(0)}40%{transform:rotate(-8deg)}70%{transform:rotate(5deg)}}
+.result{flex:1;min-width:0;position:relative;border-radius:20px;padding:10px 16px;border:3px solid var(--line);background:var(--sheet);line-height:1.5;font-size:16px;box-shadow:0 5px 0 var(--line)}
+.result::before{content:"";position:absolute;left:-13px;bottom:18px;width:20px;height:20px;background:inherit;border-left:3px solid var(--line);border-bottom:3px solid var(--line);transform:rotate(45deg)}
+.result.ok{background:var(--ok-bg)}
+.result.bad{background:var(--bad-bg)}
+.result .head{font-weight:900;font-size:22px}
+.result.ok .head{color:var(--ok)} .result.bad .head{color:var(--bad)}
+.result.idle .head{color:var(--ink);font-size:18px}
+.result p{margin:2px 0}
+.result .sub{color:var(--muted);font-size:14px}
+.result .gain{color:#C98A00;font-weight:900;font-size:18px}
+.pop{animation:pop .45s ease}
+@keyframes pop{0%{transform:scale(.92)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
+.nav{display:flex;align-items:center;gap:8px;margin-top:auto}
+.nav .btn{flex:none;min-width:88px}
+.dots{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;flex:1;max-height:84px;overflow:auto;padding:4px 2px}
+.dots button{width:32px;height:32px;border-radius:10px;border:2.5px solid var(--line);background:var(--sheet);color:var(--ink);font:inherit;font-size:13px;font-weight:900;cursor:pointer;font-variant-numeric:tabular-nums;padding:0;box-shadow:0 2px 0 var(--line)}
+.dots button.done{background:var(--yellow)}
+.dots button[aria-current="true"]{background:var(--mc);color:#fff;transform:scale(1.12)}
+.plabel{font-family:var(--f-fun);font-weight:900;fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-linejoin:round}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;height:100%}
+@media (max-width:860px){
+  .app{height:auto}
+  .stage{grid-template-columns:1fr}
+  #svg{height:min(78vw,520px);flex:none}
+  .instr{font-size:24px}
+  h1 .tile{width:38px;height:38px;font-size:22px}
+  .modes button{font-size:15px;padding:4px 10px 4px 6px}
+  .modes button svg{width:26px;height:26px}
+}
+@media (prefers-reduced-motion: reduce){.pop,.buddy.happy,.buddy.think{animation:none}}
+</style>
+</head>
+<body>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="app">
+  <header>
+    <h1 aria-label="分割大師"><span class="tile">分</span><span class="tile">割</span><span class="tile">大</span><span class="tile">師</span></h1>
+    <div class="score">
+      <span class="badge" id="scoreStars"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L25 14.5 L37.5 15.5 L28 24 L31 36.5 L20 30 L9 36.5 L12 24 L2.5 15.5 L15 14.5 Z" fill="#fff" stroke="#26285E" stroke-width="3" stroke-linejoin="round"/></svg><b id="stars">0</b></span>
+      <span class="prog" id="scoreDone"><span>完成 <b id="done">0</b> / <span id="all">0</span> 題</span><span class="bar"><i id="progBar"></i></span></span>
+      <button class="mini" id="bScoreOn">計分：開</button>
+      <button class="mini" id="bReset">重設分數</button>
+    </div>
+    <nav class="modes" aria-label="模式">
+      <button data-mode="dash"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="4" width="32" height="32" rx="6" fill="#FFC93C" stroke="#26285E" stroke-width="3"/><path d="M6 34 L34 6" stroke="#26285E" stroke-width="3" stroke-dasharray="4 3"/></svg>① 沿虛線分割</button>
+      <button data-mode="guide"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M4 34 L14 8 H34 L26 34 Z" fill="#7FE0A8" stroke="#26285E" stroke-width="3" stroke-linejoin="round"/><path d="M22 4 L36 18 L20 34 L12 36 L14 28 Z" fill="#FF8FC8" stroke="#26285E" stroke-width="3" stroke-linejoin="round"/></svg>② 依指示分割</button>
+      <button data-mode="same"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M4 30 L16 8 L22 30 Z" fill="#4FA8FF" stroke="#26285E" stroke-width="3" stroke-linejoin="round"/><path d="M16 34 L22 12 L36 34 Z" fill="#FF9F1C" fill-opacity=".85" stroke="#26285E" stroke-width="3" stroke-linejoin="round"/></svg>③ 相同嗎？</button>
+    </nav>
+  </header>
+  <main class="stage">
+    <section class="board">
+      <div class="boardhead"><span class="level">第 <b id="qnum">1</b> 題 <small>/ 共 <span id="qtot">8</span> 題</small></span><span class="chips"><span class="gotstar" id="gotStar"></span><span class="lv" id="lv"></span></span></div>
+      <div class="paper">
+        <svg id="svg" aria-label="方格紙"></svg>
+        <div class="hint" id="hint"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </section>
+    <aside class="panel">
+      <div class="card">
+        <span class="eyebrow" id="modeName"></span>
+        <p class="instr" id="instr"></p>
+        <div class="pens" aria-label="圈重點字工具"><span class="lab">圈重點字：</span>
+          <button class="pen" data-pen="2" aria-pressed="true"><i class="sw2"></i>圈出</button>
+          <button class="pen" data-pen="0" aria-pressed="false"><i class="sw0"></i>擦膠</button>
+          <button class="penclr" id="bMarkClear">清除標記</button></div>
+        <p class="tip" id="tip"></p>
+      </div>
+      <div class="opts" id="opts"></div>
+      <div class="tools">
+        <button class="btn" id="bUndo">↶ 撤回</button>
+        <button class="btn" id="bClear">清除</button>
+        <button class="btn go wide" id="bCheck">✔ 檢查</button>
+        <button class="btn soft wide" id="bReveal">顯示答案</button>
+        <button class="btn soft" id="bDemo">示範答案</button>
+        <button class="btn soft" id="bOverlay">重疊比較</button>
+      </div>
+      <div class="talk">
+        <svg class="buddy" id="buddy" viewBox="0 0 80 88" aria-hidden="true">
+          <ellipse cx="40" cy="84" rx="24" ry="4" fill="#26285E" opacity=".18"/>
+          <rect x="26" y="70" width="8" height="12" rx="3" fill="#26285E"/><rect x="46" y="70" width="8" height="12" rx="3" fill="#26285E"/>
+          <rect x="8" y="10" width="64" height="62" rx="14" fill="#FFC93C" stroke="#26285E" stroke-width="3.5"/>
+          <path d="M8 70 L72 12" stroke="#26285E" stroke-width="3" stroke-dasharray="6 5" opacity=".35"/>
+          <path d="M40 10 L40 3" stroke="#26285E" stroke-width="3" stroke-linecap="round"/><path d="M34 3 L46 3 L40 -3Z" fill="#FF4F8B" stroke="#26285E" stroke-width="2.5" stroke-linejoin="round" transform="translate(0 3)"/>
+          <circle cx="29" cy="34" r="5.5" fill="#26285E"/><circle cx="51" cy="34" r="5.5" fill="#26285E"/>
+          <circle cx="31" cy="32" r="1.8" fill="#fff"/><circle cx="53" cy="32" r="1.8" fill="#fff"/>
+          <ellipse class="cheek" cx="21" cy="46" rx="5" ry="3" fill="#FF7B6B" opacity=".7"/><ellipse class="cheek" cx="59" cy="46" rx="5" ry="3" fill="#FF7B6B" opacity=".7"/>
+          <path class="brow" d="M22 24 L34 27 M46 27 L58 24" stroke="#26285E" stroke-width="3" stroke-linecap="round"/>
+          <path class="m-idle" d="M32 47 Q40 54 48 47" fill="none" stroke="#26285E" stroke-width="3.5" stroke-linecap="round"/>
+          <path class="m-happy" d="M29 45 Q40 60 51 45 Z" fill="#fff" stroke="#26285E" stroke-width="3" stroke-linejoin="round"/>
+          <ellipse class="m-think" cx="44" cy="50" rx="4" ry="5" fill="#26285E"/>
+        </svg>
+        <div class="result idle" id="result"></div>
+      </div>
+      <div class="nav">
+        <button class="btn" id="bPrev">◀ 上一題</button>
+        <div class="dots" id="dots"></div>
+        <button class="btn primary" id="bNext">下一題 ▶</button>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+/*ENGINE*/
+const EPS=1e-7;
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]], cross=(a,b)=>a[0]*b[1]-a[1]*b[0], dot=(a,b)=>a[0]*b[0]+a[1]*b[1], len=a=>Math.hypot(a[0],a[1]);
+function area(P){let s=0;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length];s+=a[0]*b[1]-b[0]*a[1]}return s/2}
+function inside(pt,P){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>pt[1])!==(b[1]>pt[1])&&pt[0]<(b[0]-a[0])*(pt[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+function segDist(p,a,b){const ab=sub(b,a),t=Math.max(0,Math.min(1,dot(sub(p,a),ab)/dot(ab,ab)));return len(sub(p,[a[0]+ab[0]*t,a[1]+ab[1]*t]))}
+function simplify(P){P=P.slice();let ch=true;while(ch&&P.length>2){ch=false;for(let i=0;i<P.length;i++){const a=P[(i-1+P.length)%P.length],b=P[i],c=P[(i+1)%P.length];const u=sub(b,a),v=sub(c,b);if(len(u)<1e-6||Math.abs(cross(u,v))<1e-6*Math.max(1,len(u)*len(v))){P.splice(i,1);ch=true;break}}}return P}
+const NAMES={5:'五邊形',6:'六邊形',7:'七邊形',8:'八邊形'};
+function classify(P){const n=P.length;if(n===3)return'三角形';
+  if(n===4){const e=[0,1,2,3].map(i=>sub(P[(i+1)%4],P[i]));const par=(a,b)=>Math.abs(cross(a,b))<1e-6*len(a)*len(b);
+    const p1=par(e[0],e[2]),p2=par(e[1],e[3]);
+    if(p1&&p2){const right=Math.abs(dot(e[0],e[1]))<1e-6*len(e[0])*len(e[1]);const eq=Math.abs(len(e[0])-len(e[1]))<1e-6;
+      if(right)return eq?'正方形':'長方形';return eq?'菱形':'平行四邊形'}
+    if(!(p1||p2))return'四邊形';
+    for(let i=0;i<4;i++){const a=e[i],b=e[(i+1)%4];if(Math.abs(dot(a,b))<1e-6*len(a)*len(b))return'直角梯形'}
+    const legs=p1?[e[1],e[3]]:[e[0],e[2]];if(Math.abs(len(legs[0])-len(legs[1]))<1e-6)return'正梯形';
+    return'梯形'}
+  return NAMES[n]||n+'邊形'}
+function computePieces(poly,cuts){
+  const S=[];for(let i=0;i<poly.length;i++)S.push([poly[i],poly[(i+1)%poly.length],false]);
+  cuts.forEach(c=>{if(c[0]!==c[2]||c[1]!==c[3])S.push([[c[0],c[1]],[c[2],c[3]],true])});
+  const ts=S.map(()=>[0,1]);
+  for(let i=0;i<S.length;i++)for(let j=i+1;j<S.length;j++){
+    const p=S[i][0],r=sub(S[i][1],p),q=S[j][0],s=sub(S[j][1],q),d=cross(r,s),qp=sub(q,p);
+    if(Math.abs(d)>1e-9){const t=cross(qp,s)/d,u=cross(qp,r)/d;
+      if(t>-1e-9&&t<1+1e-9&&u>-1e-9&&u<1+1e-9){ts[i].push(Math.min(1,Math.max(0,t)));ts[j].push(Math.min(1,Math.max(0,u)))}}
+    else if(Math.abs(cross(qp,r))<1e-9){const rr=dot(r,r),ss=dot(s,s);
+      [S[j][0],S[j][1]].forEach(e=>{const t=dot(sub(e,p),r)/rr;if(t>-1e-9&&t<1+1e-9)ts[i].push(t)});
+      [S[i][0],S[i][1]].forEach(e=>{const t=dot(sub(e,q),s)/ss;if(t>-1e-9&&t<1+1e-9)ts[j].push(t)})}}
+  const V=new Map(),E=new Set();const key=p=>Math.round(p[0]*1e5)+','+Math.round(p[1]*1e5);
+  const addV=p=>{const k=key(p);if(!V.has(k))V.set(k,p);return k};
+  S.forEach((sg,i)=>{const a=sg[0],r=sub(sg[1],a);const T=[...new Set(ts[i].map(t=>Math.round(t*1e9)/1e9))].sort((x,y)=>x-y);
+    let prev=null;T.forEach(t=>{const k=addV([a[0]+r[0]*t,a[1]+r[1]*t]);if(prev&&prev!==k)E.add(prev<k?prev+'|'+k:k+'|'+prev);prev=k})});
+  const adj=new Map();V.forEach((_,k)=>adj.set(k,new Set()));
+  E.forEach(e=>{const[a,b]=e.split('|');adj.get(a).add(b);adj.get(b).add(a)});
+  let dangling=false;let ch=true;
+  while(ch){ch=false;adj.forEach((nb,k)=>{if(nb.size===1){const o=[...nb][0];const pa=V.get(k),pb=V.get(o);
+      if(inside([(pa[0]+pb[0])/2,(pa[1]+pb[1])/2],poly))dangling=true;
+      adj.get(o).delete(k);nb.clear();ch=true}})}
+  const ord=new Map();adj.forEach((nb,k)=>{const p=V.get(k);ord.set(k,[...nb].sort((x,y)=>{const a=V.get(x),b=V.get(y);return Math.atan2(a[1]-p[1],a[0]-p[0])-Math.atan2(b[1]-p[1],b[0]-p[0])}))});
+  const seen=new Set(),faces=[];
+  ord.forEach((nb,u0)=>nb.forEach(v0=>{if(seen.has(u0+'>'+v0))return;let u=u0,v=v0;const F=[];let guard=0;
+    while(!seen.has(u+'>'+v)&&guard++<5000){seen.add(u+'>'+v);F.push(V.get(u));const L=ord.get(v);const i=L.indexOf(u);const w=L[(i-1+L.length)%L.length];u=v;v=w}
+    faces.push(F)}));
+  if(!faces.length)return{pieces:[],dangling};
+  let mx=faces[0];faces.forEach(f=>{if(Math.abs(area(f))>Math.abs(area(mx)))mx=f});
+  const outerSign=Math.sign(area(mx));
+  const pieces=[];
+  faces.forEach(F=>{const A=area(F);if(Math.abs(A)<1e-9||Math.sign(A)===outerSign)return;
+    const a=F[0],b=F[1],e=sub(b,a),l=len(e),n=[-e[1]/l,e[0]/l],m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+    let ip=[m[0]+n[0]*.01,m[1]+n[1]*.01];if(!inside(ip,F))ip=[m[0]-n[0]*.01,m[1]-n[1]*.01];
+    if(!inside(ip,poly))return;
+    const P=simplify(F);if(P.length<3)return;
+    pieces.push({pts:P,type:classify(P),area:Math.abs(area(P))})});
+  return{pieces,dangling}}
+function matchPoly(A,B,allowScale){const n=A.length;if(B.length!==n)return null;const res=[];
+  for(const refl of[false,true])for(const dir of[1,-1])for(let k=0;k<n;k++){
+    const m=i=>(k+dir*i+2*n)%n;const F=p=>refl?[p[0],-p[1]]:p;
+    const u=F(sub(A[1],A[0])),v=sub(B[m(1)],B[m(0)]);const s=len(v)/len(u);
+    if(!allowScale&&Math.abs(s-1)>1e-6)continue;
+    const th=Math.atan2(cross(u,v),dot(u,v)),c=Math.cos(th),sn=Math.sin(th);
+    const f=p=>{const q=F(sub(p,A[0]));return[B[m(0)][0]+s*(c*q[0]-sn*q[1]),B[m(0)][1]+s*(sn*q[0]+c*q[1])]};
+    let ok=true;for(let i=0;i<n;i++){if(len(sub(f(A[i]),B[m(i)]))>1e-5){ok=false;break}}
+    if(ok)res.push({refl,th,s})}
+  if(!res.length)return null;res.sort((a,b)=>(a.refl-b.refl)||(Math.abs(a.th)-Math.abs(b.th)));return res[0]}
+/*END*/
+/*DATA*/
+const ORDER=['三角形','正方形','長方形','菱形','平行四邊形','梯形','直角梯形','正梯形','四邊形','五邊形','六邊形','七邊形','八邊形'];
+const COLOR={'三角形':'--t-tri','正方形':'--t-sq','長方形':'--t-rect','平行四邊形':'--t-para','梯形':'--t-trap','直角梯形':'--t-rtrap','正梯形':'--t-itrap','菱形':'--t-rh','五邊形':'--t-pent','六邊形':'--t-hex'};
+const colorOf=t=>`var(${COLOR[t]||'--t-oth'})`;
+function countText(c){const ks=Object.keys(c).filter(k=>c[k]>0).sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)});
+  const parts=ks.map(k=>`${c[k]} 個${k}`);if(parts.length<=1)return parts.join('');return parts.slice(0,-1).join('、')+'和 '+parts[parts.length-1]}
+function tally(ps){const c={};ps.forEach(p=>c[p.type]=(c[p.type]||0)+1);return c}
+
+// 常用圖形
+const R=[[1,1],[7,1],[7,5],[1,5]];
+const HOUSE=[[1,3],[4,1],[7,3],[7,5],[1,5]];
+const U=[[1,0],[3,0],[3,2],[5,2],[5,0],[7,0],[7,6],[1,6]];
+const T=[[3,1],[5,1],[5,3],[7,3],[7,5],[1,5],[1,3],[3,3]];
+const STAIR=[[1,1],[2,1],[2,2],[3,2],[3,3],[4,3],[4,4],[1,4]];
+const ARROW=[[0,2],[4,2],[4,0],[8,4],[4,8],[4,6],[0,6]];
+const HEX=[[2,0],[6,0],[8,3],[6,6],[2,6],[0,3]];
+const HEPT=[[0,2],[2,0],[6,0],[8,2],[8,6],[4,8],[0,6]];
+const CHIMNEY=[[0,4],[4,0],[6,2],[6,1],[7,1],[7,3],[8,4],[8,8],[0,8]];
+const BOAT=[[4,0],[7,4],[8,4],[6,7],[2,7],[0,4],[4,4]];
+const BIGL=[[0,0],[3,0],[3,4],[7,4],[7,7],[0,7]];
+const ENVEL=[[0,0],[4,3],[8,0],[8,6],[0,6]];
+const CROSS=[[2,0],[4,0],[4,2],[6,2],[6,4],[4,4],[4,6],[2,6],[2,4],[0,4],[0,2],[2,2]];
+const CHEV=[[0,0],[4,3],[8,0],[8,4],[4,7],[0,4]];
+const PARA=[[2,1],[8,1],[6,5],[0,5]];
+const PARA7=[[1,1],[7,1],[6,5],[0,5]];
+const SMALLL=[[1,1],[3,1],[3,3],[5,3],[5,5],[1,5]];
+const SSHAPE=[[1,1],[5,1],[5,3],[7,3],[7,5],[3,5],[3,3],[1,3]];
+const SLANTL=[[0,0],[3,0],[5,3],[8,3],[8,7],[0,7]];
+const SHOE=[[0,0],[2,0],[2,3],[6,3],[9,7],[0,7]];
+const ZED=[[0,0],[4,0],[6,3],[9,3],[9,6],[5,6],[3,3],[0,3]];
+const SWALLOW=[[0,1],[5,1],[8,4],[5,7],[0,7],[2,4]];
+const TSLANT=[[0,0],[8,0],[8,2],[6,2],[7,6],[1,6],[2,2],[0,2]];
+const STAIRS=[[0,0],[2,0],[2,2],[4,2],[4,4],[8,8],[0,8]];
+const FISH=[[0,0],[3,2],[5,0],[8,0],[10,3],[8,6],[5,6],[3,4],[0,6]];
+const ROCKET=[[4,0],[6,2],[6,6],[8,8],[0,8],[2,6],[2,2]];
+const FLAG=[[0,0],[6,0],[4,2],[6,4],[1,4],[1,8],[0,8]];
+const HAT=[[0,6],[2,6],[3,1],[6,1],[7,6],[9,6],[9,8],[0,8]];
+const ARCH=[[0,0],[8,0],[8,6],[6,6],[5,3],[3,3],[2,6],[0,6]];
+const NOTCHTRAP=[[0,6],[2,0],[8,0],[10,6],[7,6],[6,3],[4,3],[3,6]];
+const IRHEX=[[1,0],[6,0],[9,3],[7,7],[2,7],[0,3]];
+const MROOF=[[0,2],[2,0],[4,2],[6,0],[8,2],[8,5],[0,5]];
+const PSHEX=[[0,0],[4,0],[6,2],[6,6],[2,6],[0,4]];
+const BOLT=[[3,0],[6,0],[4,4],[5,4],[3,8],[0,8],[2,4],[1,4]];
+const DART=[[0,0],[4,2],[8,0],[4,6]];
+
+const BANK={
+  dash:{name:'模式① 沿虛線分割',tip:'沿虛線分割後，會得出哪些多邊形？先選一個答案。老師亦可以直接按「顯示答案」。',qs:[
+    {lv:1,src:'課本 P.63 ②a',W:8,H:6,poly:R,cuts:[[1,3,7,3]]},
+    {lv:2,src:'斜邊樓梯',W:8,H:8,poly:STAIRS,cuts:[[0,2,2,2],[0,4,4,4],[4,4,4,8]]},
+    {lv:3,src:'課本 P.65 ①c',W:5,H:5,poly:[[3,1],[4,1],[4,4],[1,4],[1,3],[2,3],[2,2],[3,2]],cuts:[[1,4,3,2],[3,2,4,2]]},
+    {lv:2,src:'七邊形',W:8,H:8,poly:HEPT,cuts:[[0,2,8,2],[0,6,8,6]]},
+    {lv:3,src:'不規則六邊形',W:9,H:7,poly:IRHEX,cuts:[[0,3,9,3],[1,0,1,3],[6,0,6,3]]},
+    {lv:2,src:'旗',W:6,H:8,poly:FLAG,cuts:[[1,0,1,4],[1,2,4,2]]},
+    {lv:2,src:'課本 P.65 ①b',W:5,H:5,poly:STAIR,cuts:[[1,4,2,2],[3,3,3,4]]},
+    {lv:2,src:'大 L 形',W:7,H:7,poly:BIGL,cuts:[[3,4,3,7],[0,4,3,0]]},
+    {lv:3,src:'練習 18 ②',W:8,H:8,poly:[[1,3],[4,1],[7,5],[5,7],[1,7]],cuts:[[4,1,4,7],[4,5,7,5]]},
+    {lv:2,src:'六邊形',W:8,H:6,poly:HEX,cuts:[[2,0,2,6],[6,0,6,6],[0,3,2,3]]},
+    {lv:2,src:'斜頂 L 形',W:8,H:7,poly:SLANTL,cuts:[[0,3,8,3],[3,0,3,3]]},
+    {lv:1,src:'課本 P.63 ②b',W:8,H:6,poly:R,cuts:[[5,1,3,5]]},
+    {lv:3,src:'缺口梯形',W:10,H:6,poly:NOTCHTRAP,cuts:[[1,3,9,3]]},
+    {lv:3,src:'Z 形',W:9,H:6,poly:ZED,cuts:[[3,3,6,3],[4,0,4,3],[5,3,5,6]]},
+    {lv:2,src:'火箭',W:8,H:8,poly:ROCKET,cuts:[[2,2,6,2],[2,6,2,8],[6,6,6,8]]},
+    {lv:2,src:'鞋形',W:9,H:7,poly:SHOE,cuts:[[0,3,2,3],[6,3,6,7]]},
+    {lv:1,src:'M 形屋頂',W:8,H:5,poly:MROOF,cuts:[[0,2,8,2],[4,2,4,5]]},
+    {lv:1,src:'課本 P.65 ①a',W:5,H:5,poly:STAIR,cuts:[[2,2,2,4],[3,3,3,4]]},
+    {lv:2,src:'帆船',W:8,H:7,poly:BOAT,cuts:[[4,4,7,4],[2,4,2,7],[6,4,6,7]]},
+    {lv:2,src:'斜腳 T 形',W:8,H:6,poly:TSLANT,cuts:[[2,2,6,2],[2,2,2,6],[6,2,6,6]]},
+    {lv:2,src:'箭咀',W:8,H:8,poly:ARROW,cuts:[[4,2,4,6]]},
+    {lv:3,src:'燕尾形',W:8,H:8,poly:SWALLOW,cuts:[[2,4,8,4],[5,1,5,7]]},
+    {lv:3,src:'閃電形',W:6,H:8,poly:BOLT,cuts:[[2,4,4,4]]},
+    {lv:3,src:'十字形',W:6,H:6,poly:CROSS,cuts:[[2,2,4,2],[2,4,4,4],[0,4,2,2],[4,4,6,2]]},
+    {lv:2,src:'拱門',W:8,H:6,poly:ARCH,cuts:[[0,3,8,3]]},
+    {lv:2,src:'信封形',W:8,H:6,poly:ENVEL,cuts:[[4,3,4,6],[0,3,8,3]]},
+    {lv:3,src:'V 字形',W:8,H:7,poly:CHEV,cuts:[[4,3,4,7]]},
+    {lv:1,src:'帽子',W:9,H:8,poly:HAT,cuts:[[2,6,7,6],[3,1,3,6],[6,1,6,6]]},
+    {lv:3,src:'有煙囱的屋',W:8,H:8,poly:CHIMNEY,cuts:[[0,4,8,4],[6,2,7,3]]},
+    {lv:3,src:'練習 18 ①',W:8,H:8,poly:[[0,1],[4,1],[8,7],[4,7]],cuts:[[2,1,6,7],[2,4,6,4]]},
+    {lv:3,src:'魚形',W:10,H:6,poly:FISH,cuts:[[3,2,3,4],[5,0,5,6],[8,0,8,6]]},
+  ]},
+  guide:{name:'模式② 依指示分割',tip:'點兩個格點畫一條線段，畫好後按「檢查」。',qs:[
+    {lv:1,src:'課本 P.66 ②a',W:8,H:6,poly:HOUSE,need:{'三角形':1,'長方形':1},demos:[[[1,3,7,3]]]},
+    {lv:3,src:'拱門',W:8,H:6,poly:ARCH,need:{'長方形':3,'三角形':2},demos:[[[0,3,8,3],[2,3,2,6],[6,3,6,6]]]},
+    {lv:1,src:'不規則六邊形',W:9,H:7,poly:IRHEX,need:{'梯形':2},demos:[[[0,3,9,3]]]},
+    {lv:2,src:'六邊形',W:8,H:6,poly:HEX,need:{'梯形':2},demos:[[[0,3,8,3]],[[2,0,6,6]],[[6,0,2,6]]]},
+    {lv:2,src:'練習 18 ④',W:8,H:6,poly:R,need:{'梯形':4},demos:[[[1,3,7,3],[3,1,4,3],[4,3,3,5]],[[4,1,4,5],[1,2,4,3],[4,3,7,2]],[[2,1,3,5],[4,1,4,5],[6,1,5,5]]]},
+    {lv:1,src:'斜腳 T 形',W:8,H:6,poly:TSLANT,need:{'長方形':1,'梯形':1},demos:[[[2,2,6,2]]]},
+    {lv:2,src:'帆船',W:8,H:7,poly:BOAT,need:{'三角形':2,'梯形':1},demos:[[[4,4,7,4],[2,4,2,7]],[[4,4,7,4],[6,4,6,7]]]},
+    {lv:3,src:'有煙囱的屋',W:8,H:8,poly:CHIMNEY,need:{'正方形':2,'三角形':1,'梯形':1},demos:[[[0,4,8,4],[6,2,7,3],[4,4,4,8]]]},
+    {lv:1,src:'課本 P.66 ②d',W:8,H:6,poly:U,need:{'長方形':3},demos:[[[3,2,3,6],[5,2,5,6]]]},
+    {lv:3,src:'長方形（其他出版社題型）',W:10,H:6,poly:[[0,1],[10,1],[10,5],[0,5]],need:{'梯形':2,'菱形':1},tip:'菱形的四條邊一樣長。數一數：斜邊橫走 3 格、直走 4 格，長度是 5 格。',demos:[[[4,1,1,5],[9,1,6,5]],[[1,1,4,5],[6,1,9,5]]]},
+    {lv:2,src:'燕尾形',W:8,H:8,poly:SWALLOW,need:{'梯形':2,'三角形':2},demos:[[[2,4,8,4],[5,1,5,7]]]},
+    {lv:2,src:'斜頂 L 形',W:8,H:7,poly:SLANTL,need:{'三角形':1,'正方形':1,'長方形':1},demos:[[[0,3,8,3],[3,0,3,3]]]},
+    {lv:3,src:'課本 P.66 挑戰題',W:6,H:6,poly:[[2,0],[6,1],[5,2],[5,6],[1,5],[1,1]],need:{'平行四邊形':2,'三角形':2},demos:[[[1,1,5,2],[1,1,6,1],[1,3,5,4]],[[1,1,5,2],[2,0,5,2],[1,3,5,4]]]},
+    {lv:2,src:'十字形',W:6,H:6,poly:CROSS,need:{'長方形':1,'正方形':2},demos:[[[2,2,4,2],[2,4,4,4]],[[2,2,2,4],[4,2,4,4]]]},
+    {lv:2,src:'正梯形（其他出版社題型）',W:8,H:6,poly:[[2,1],[6,1],[8,5],[0,5]],need:{'梯形':3},demos:[[[1,3,7,3],[4,1,4,3]],[[4,1,4,5],[1,3,4,3]]]},
+    {lv:2,src:'不規則六邊形',W:6,H:6,poly:PSHEX,need:{'正方形':1,'梯形':2},demos:[[[4,0,4,6],[0,4,4,4]]]},
+    {lv:2,src:'火箭',W:8,H:8,poly:ROCKET,need:{'三角形':1,'正方形':1,'梯形':1},demos:[[[2,2,6,2],[2,6,6,6]]]},
+    {lv:3,src:'練習 18 ⑤',W:8,H:8,poly:[[3,1],[5,1],[7,7],[5,7],[4,4],[3,7],[1,7]],need:{'梯形':1,'平行四邊形':2},demos:[[[2,4,6,4]]]},
+    {lv:2,src:'六邊形',W:8,H:6,poly:HEX,need:{'長方形':1,'三角形':2},demos:[[[2,0,2,6],[6,0,6,6]]]},
+    {lv:3,src:'七邊形',W:8,H:8,poly:HEPT,need:{'梯形':3},demos:[[[0,2,8,2],[4,2,4,8]]]},
+    {lv:3,src:'課本 P.66 ②f',W:8,H:6,poly:T,need:{'三角形':1,'正方形':1,'梯形':1},demos:[[[3,3,5,3],[1,3,3,5]],[[3,3,5,3],[7,3,5,5]]]},
+    {lv:2,src:'六邊形（其他出版社題型）',W:8,H:6,poly:HEX,need:{'梯形':2,'三角形':1},demos:[[[2,0,2,6],[2,3,8,3]],[[6,0,6,6],[0,3,6,3]]]},
+    {lv:2,src:'帽子',W:9,H:8,poly:HAT,need:{'三角形':2,'長方形':2},demos:[[[2,6,7,6],[3,1,3,6],[6,1,6,6]]]},
+    {lv:1,src:'信封形',W:8,H:6,poly:ENVEL,need:{'三角形':2,'長方形':1},demos:[[[0,3,8,3]]]},
+    {lv:3,src:'缺口梯形',W:10,H:6,poly:NOTCHTRAP,need:{'梯形':1,'平行四邊形':2},demos:[[[1,3,9,3]]]},
+    {lv:1,src:'鞋形',W:9,H:7,poly:SHOE,need:{'長方形':1,'梯形':1},demos:[[[2,3,2,7]]]},
+    {lv:1,src:'課本 P.66 ②c',W:8,H:6,poly:U,need:{'長方形':1,'正方形':2},demos:[[[1,2,3,2],[5,2,7,2]]]},
+    {lv:2,src:'大 L 形',W:7,H:7,poly:BIGL,need:{'正方形':1,'長方形':2},demos:[[[0,4,3,4],[3,4,3,7]],[[3,4,3,7],[0,3,3,3]]]},
+    {lv:2,src:'課本 P.66 ②e',W:8,H:6,poly:T,need:{'正方形':1,'梯形':2},demos:[[[3,3,5,3],[5,3,3,5]],[[3,3,5,3],[3,3,5,5]]]},
+    {lv:3,src:'魚形',W:10,H:6,poly:FISH,need:{'梯形':2,'長方形':1,'三角形':1},demos:[[[3,2,3,4],[5,0,5,6],[8,0,8,6]]]},
+    {lv:2,src:'Z 形',W:9,H:6,poly:ZED,need:{'三角形':2,'長方形':2},demos:[[[3,3,6,3],[4,0,4,3],[5,3,5,6]]]},
+    {lv:2,src:'課本 P.66 ②b',W:8,H:6,poly:HOUSE,need:{'梯形':2},demos:[[[4,1,4,5]]]},
+    {lv:3,src:'箭咀',W:8,H:8,poly:ARROW,need:{'三角形':1,'正方形':1,'梯形':1},demos:[[[4,2,4,6],[6,2,6,6]],[[4,2,4,6],[5,1,5,7]]]},
+  ]},
+  same:{name:'模式③ 相同嗎？',tip:'分割後，每一份都要是三角形或四邊形，而且形狀和大小都相同。檢查後按「重疊比較」看看。',qs:[
+    {lv:1,src:'課本 P.62 切三文治',W:6,H:6,poly:[[1,1],[5,1],[5,5],[1,5]],text:'分割成 2 個形狀和大小都相同的多邊形',tip:'可以分成長方形、三角形，還可以分成梯形！',need:{total:2},same:'all',demos:[[[3,1,3,5]],[[1,1,5,5]],[[4,1,2,5]]]},
+    {lv:2,src:'正梯形',W:8,H:6,poly:[[2,1],[6,1],[8,5],[0,5]],text:'把正梯形分割成 2 個形狀和大小都相同的梯形',tip:'疊在一起時，其中一份要先翻轉。',need:{'梯形':2},same:'all',demos:[[[4,1,4,5]]]},
+    {lv:1,src:'課本 P.64 ④c',W:8,H:6,poly:R,text:'分割成 6 個形狀和大小都相同的正方形',need:{'正方形':6},same:'all',demos:[[[3,1,3,5],[5,1,5,5],[1,3,7,3]]]},
+    {lv:2,src:'拱門',W:8,H:6,poly:ARCH,text:'分割成 1 個長方形和 2 個形狀和大小都相同的梯形',need:{'長方形':1,'梯形':2},same:'梯形',demos:[[[0,3,8,3]]]},
+    {lv:3,src:'閃電形',W:6,H:8,poly:BOLT,text:'分割成 2 個形狀和大小都相同的平行四邊形',need:{'平行四邊形':2},same:'all',demos:[[[2,4,4,4]]]},
+    {lv:3,src:'長方形（其他出版社題型）',W:8,H:6,poly:R,text:'分割成 4 個形狀和大小都相同的梯形',tip:'有兩種或以上的方法，試試找出來！',need:{'梯形':4},same:'all',demos:[[[1,3,7,3],[3,1,5,3],[3,3,5,5]],[[4,1,4,5],[1,2,4,4],[4,2,7,4]]]},
+    {lv:1,src:'課本 P.63 數學探索',W:8,H:6,poly:[[1,3],[4,1],[7,3],[4,5]],text:'把菱形分割成 2 個形狀和大小都相同的三角形',need:{'三角形':2},same:'all',demos:[[[4,1,4,5]],[[1,3,7,3]]]},
+    {lv:2,src:'旗',W:6,H:8,poly:FLAG,text:'分割成 1 個長方形和 2 個形狀和大小都相同的梯形',need:{'長方形':1,'梯形':2},same:'梯形',demos:[[[1,0,1,4],[1,2,4,2]]]},
+    {lv:3,src:'課本 P.64 ④b',W:8,H:6,poly:R,text:'分割成 4 個形狀和大小都相同的三角形',tip:'想一想：畫兩條對角線得出的 4 個三角形，形狀和大小都相同嗎？',need:{'三角形':4},same:'all',demos:[[[4,1,4,5],[1,1,4,5],[4,1,7,5]],[[1,3,7,3],[1,1,7,3],[1,3,7,5]]]},
+    {lv:2,src:'課本 P.64 ③b',W:7,H:6,poly:PARA7,text:'分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[3,1,4,5]],[[5,1,2,5]]]},
+    {lv:2,src:'屋形五邊形',W:8,H:6,poly:HOUSE,text:'分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[4,1,4,5]]]},
+    {lv:2,src:'M 形屋頂',W:8,H:5,poly:MROOF,text:'分割成 2 個形狀和大小都相同的三角形和 1 個長方形',need:{'三角形':2,'長方形':1},same:'三角形',demos:[[[0,2,8,2]]]},
+    {lv:2,src:'燕尾形',W:8,H:8,poly:SWALLOW,text:'分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[2,4,8,4]]]},
+    {lv:1,src:'飛鏢形',W:8,H:6,poly:DART,text:'分割成 2 個形狀和大小都相同的三角形',need:{'三角形':2},same:'all',demos:[[[4,2,4,6]]]},
+    {lv:1,src:'課本 P.64 ④a',W:8,H:6,poly:R,text:'分割成 4 個形狀和大小都相同的長方形',need:{'長方形':4},same:'all',demos:[[[4,1,4,5],[1,3,7,3]],[[1,2,7,2],[1,3,7,3],[1,4,7,4]]]},
+    {lv:3,src:'Z 形',W:9,H:6,poly:ZED,text:'分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[3,3,6,3]]]},
+    {lv:3,src:'L 形',W:6,H:6,poly:SMALLL,text:'分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[1,5,3,3]]]},
+    {lv:2,src:'練習 18 ③',W:8,H:6,poly:[[2,1],[6,1],[8,5],[0,5]],text:'把正梯形分割成 3 個形狀和大小都相同的三角形',need:{'三角形':3},same:'all',demos:[[[2,1,4,5],[4,5,6,1]]]},
+    {lv:3,src:'平行四邊形',W:8,H:6,poly:[[1,1],[5,1],[7,5],[3,5]],text:'把平行四邊形分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[4,1,4,5]]]},
+    {lv:3,src:'課本 P.64 ④d',W:8,H:6,poly:R,text:'分割成 6 個形狀和大小都相同的梯形',need:{'梯形':6},same:'all',demos:[[[3,1,3,5],[5,1,5,5],[1,2,3,4],[3,2,5,4],[5,2,7,4]],[[3,1,3,5],[5,1,5,5],[1,4,3,2],[3,4,5,2],[5,4,7,2]]]},
+    {lv:2,src:'六邊形',W:8,H:6,poly:HEX,text:'分割成 2 個形狀和大小都相同的梯形',need:{'梯形':2},same:'all',demos:[[[0,3,8,3]]]},
+    {lv:1,src:'課本 P.64 ③a',W:7,H:6,poly:PARA7,text:'分割成 2 個形狀和大小都相同的三角形',need:{'三角形':2},same:'all',demos:[[[1,1,6,5]],[[7,1,0,5]]]},
+    {lv:3,src:'缺口梯形',W:10,H:6,poly:NOTCHTRAP,text:'分割成 1 個梯形和 2 個形狀和大小都相同的平行四邊形',need:{'梯形':1,'平行四邊形':2},same:'平行四邊形',demos:[[[1,3,9,3]]]},
+    {lv:3,src:'不規則六邊形',W:6,H:6,poly:PSHEX,text:'分割成 2 個形狀和大小都相同的梯形',tip:'這個六邊形轉半個圈後和原本一樣，分割線要經過中心點。',need:{'梯形':2},same:'all',demos:[[[0,0,6,6]]]},
+    {lv:3,src:'練習 18 ⑥',W:8,H:8,poly:[[4,1],[8,3],[6,7],[1,7],[3,3],[4,3]],text:'分割成 3 個形狀和大小都相同的三角形和 1 個長方形',need:{'三角形':3,'長方形':1},same:'三角形',demos:[[[3,3,3,7],[4,3,8,3],[6,3,6,7]]]},
+  ]},
+};
+// 菱形都是平行四邊形：指示沒有提到菱形時，當作平行四邊形計算
+function normTally(got,need){const g={...got};['直角梯形','正梯形'].forEach(s=>{if(!need[s]&&g[s]){g['梯形']=(g['梯形']||0)+g[s];delete g[s]}});if(!need['菱形']&&g['菱形']){g['平行四邊形']=(g['平行四邊形']||0)+g['菱形'];delete g['菱形']}return g}
+function meets(ps,need){if(need.total)return ps.length===need.total;const got=normTally(tally(ps),need);const ks=new Set([...Object.keys(need),...Object.keys(got)]);return[...ks].every(k=>(need[k]||0)===(got[k]||0))}
+function congruentAll(g){return g.length<2||g.every(p=>matchPoly(p.pts,g[0].pts,false))}
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const CONF={'梯形':['平行四邊形','三角形','長方形'],'平行四邊形':['梯形','長方形','菱形'],'正方形':['長方形','梯形'],'長方形':['正方形','平行四邊形'],'三角形':['梯形','正方形'],'菱形':['平行四邊形','正方形'],'五邊形':['梯形','六邊形'],'六邊形':['五邊形','長方形']};
+function makeOptions(ans,seed){const r=rng(seed);const right=countText(ans);const cands=new Map();
+  const add=c=>{const t=countText(c);if(t&&t!==right&&!cands.has(t))cands.set(t,c)};
+  for(const t in ans){(CONF[t]||[]).forEach(o=>{const c={...ans};c[t]--;c[o]=(c[o]||0)+1;add(c);const d={...ans};delete d[t];d[o]=(d[o]||0)+ans[t];add(d)});
+    const p={...ans};p[t]++;add(p);if(ans[t]>1){const m={...ans};m[t]--;add(m)}}
+  const list=[...cands.keys()];for(let i=list.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[list[i],list[j]]=[list[j],list[i]]}
+  const opts=[right,...list.slice(0,3)];for(let i=opts.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]]}
+  return{opts,right}}
+/*ENDDATA*/
+
+const $=id=>document.getElementById(id);
+const svg=$('svg');
+const LV=['','易','中','難'];
+const ALL=Object.values(BANK).reduce((s,m)=>s+m.qs.length,0);
+const st={mode:'dash',idx:{dash:0,guide:0,same:0},segs:[],sel:null,res:null,revealed:false,demo:-1,overlay:false,anim:null,tries:0,usedDemo:false,wrong:new Set(),answered:false,ovMsg:null};
+let store={scoreOn:true,stars:{}};
+try{const s=JSON.parse(localStorage.getItem('fenge3')||'null');if(s){if(BANK[s.mode])st.mode=s.mode;Object.assign(st.idx,s.idx||{});store.scoreOn=s.scoreOn!==false;store.stars=s.stars||{}}}catch(e){}
+for(const m in st.idx)st.idx[m]=Math.min(Math.max(0,st.idx[m]|0),BANK[m].qs.length-1);
+const save=()=>{try{localStorage.setItem('fenge3',JSON.stringify({mode:st.mode,idx:st.idx,scoreOn:store.scoreOn,stars:store.stars}))}catch(e){}};
+const cur=()=>BANK[st.mode].qs[st.idx[st.mode]];
+const qkey=(m=st.mode,i=st.idx[m])=>m+':'+i;
+const answerOf=q=>q._ans||(q._ans=normTally(tally(computePieces(q.poly,q.cuts).pieces),{}));
+
+function centroid(P){let a=0,x=0,y=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length],c=p[0]*q[1]-q[0]*p[1];a+=c;x+=(p[0]+q[0])*c;y+=(p[1]+q[1])*c}return[x/(3*a),y/(3*a)]}
+function labelSpot(P){const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const dist=pt=>{let d=1e9;for(let i=0;i<P.length;i++)d=Math.min(d,segDist(pt,P[i],P[(i+1)%P.length]));return d};
+  let best=null,bd=-1;const cands=[centroid(P)];
+  for(let i=1;i<24;i++)for(let j=1;j<24;j++)cands.push([x0+(x1-x0)*i/24,y0+(y1-y0)*j/24]);
+  cands.forEach((c,ix)=>{if(!inside(c,P))return;const d=dist(c)*(ix===0?1.15:1);if(d>bd){bd=d;best=c}});
+  return{pt:best||cands[0],d:Math.max(bd,0.2)}}
+const path=P=>'M'+P.map(p=>p[0].toFixed(4)+' '+p[1].toFixed(4)).join('L')+'Z';
+function groupFor(){if(!st.res)return[];const q=cur();if(!q.same)return[];const ps=st.res.pieces;return q.same==='all'?ps:ps.filter(p=>p.type===q.same)}
+
+function render(){
+  const q=cur(),M=BANK[st.mode],dash=st.mode==='dash';
+  const pad=.6;svg.setAttribute('viewBox',`${-pad} ${-pad} ${q.W+2*pad} ${q.H+2*pad}`);
+  let h='';
+  for(let x=0;x<=q.W;x++)h+=`<line x1="${x}" y1="0" x2="${x}" y2="${q.H}" stroke="var(--grid)" stroke-width=".04"/>`;
+  for(let y=0;y<=q.H;y++)h+=`<line x1="0" y1="${y}" x2="${q.W}" y2="${y}" stroke="var(--grid)" stroke-width=".04"/>`;
+  const ps=st.res?st.res.pieces:null;const grp=st.overlay?groupFor():[];
+  if(!ps)h+=`<path d="${path(q.poly)}" fill="var(--poly)"/>`;
+  else ps.forEach(p=>{const gi=grp.indexOf(p);
+    if(gi===0)h+=`<path d="${path(p.pts)}" fill="var(--ref)" fill-opacity=".75" stroke="var(--ink)" stroke-width=".06" stroke-linejoin="round"/>`;
+    else if(gi>0)h+=`<path d="${path(p.pts)}" fill="var(--poly)" stroke="var(--muted)" stroke-width=".04" stroke-dasharray=".1 .1"/>`;
+    else h+=`<path d="${path(p.pts)}" fill="${colorOf(p.type)}" fill-opacity="${st.overlay?.35:.82}"/>`});
+  h+=`<path d="${path(q.poly)}" fill="none" stroke="var(--ink)" stroke-width=".11" stroke-linejoin="round"/>`;
+  if(dash)q.cuts.forEach(c=>h+=`<line x1="${c[0]}" y1="${c[1]}" x2="${c[2]}" y2="${c[3]}" stroke="var(--ink)" stroke-width=".06" stroke-dasharray=".16 .12"/>`);
+  if(!st.overlay)st.segs.forEach(c=>h+=`<line x1="${c[0]}" y1="${c[1]}" x2="${c[2]}" y2="${c[3]}" stroke="var(--cut)" stroke-width=".1" stroke-linecap="round"/>`);
+  if(ps&&!st.overlay)ps.forEach(p=>{const L=labelSpot(p.pts);const fs=Math.max(.22,Math.min(.5,L.d*.62));
+    h+=`<text class="plabel" x="${L.pt[0]}" y="${L.pt[1]}" font-size="${fs}" stroke-width="${fs*.2}" text-anchor="middle" dominant-baseline="central">${p.type}</text>`});
+  if(!dash&&!st.overlay){for(let x=0;x<=q.W;x++)for(let y=0;y<=q.H;y++)h+=`<circle cx="${x}" cy="${y}" r=".075" fill="var(--dot)" fill-opacity=".6"/>`;
+    st.segs.forEach(c=>{h+=`<circle cx="${c[0]}" cy="${c[1]}" r=".11" fill="var(--cut)"/><circle cx="${c[2]}" cy="${c[3]}" r=".11" fill="var(--cut)"/>`});
+    if(st.sel)h+=`<circle cx="${st.sel[0]}" cy="${st.sel[1]}" r=".26" fill="none" stroke="var(--cut)" stroke-width=".07"/><circle cx="${st.sel[0]}" cy="${st.sel[1]}" r=".12" fill="var(--cut)"/>`}
+  h+='<g id="ghosts"></g>';
+  svg.innerHTML=h;
+  // 題目資料
+  $('qnum').textContent=st.idx[st.mode]+1;$('qtot').textContent=M.qs.length;
+  document.body.dataset.mode=st.mode;
+  const lv=$('lv');lv.innerHTML=LV[q.lv]+' '+[1,2,3].map(k=>`<span class="${k<=q.lv?'s':'off'}">★</span>`).join('');lv.className='lv lv'+q.lv;
+  const got=store.stars[qkey()];$('gotStar').textContent=store.scoreOn&&got?'★'.repeat(got):'';
+  $('modeName').textContent=M.name;
+  drawInstr(dash?'沿虛線分割，可以得出哪些多邊形？':(q.text||'分割成 '+countText(q.need)));
+  $('tip').textContent=q.tip||M.tip;
+  $('hint').textContent=dash?'':st.overlay?'藍色是第一份，橙色是其他份；露出來的部分就是不相同的地方':(st.sel?'再點一個格點，完成這條線段（點同一點可取消）':'點兩個格點，畫一條分割線段');
+  // 選項
+  const ob=$('opts');ob.hidden=!dash;
+  if(dash){const{opts,right}=makeOptions(answerOf(q),st.idx.dash*31+7);
+    ob.innerHTML=opts.map((t,i)=>{const cls=(st.answered||st.revealed)&&t===right?'right':st.wrong.has(t)?'wrong':'';
+      return`<button class="opt ${cls}" data-t="${t}" ${cls||st.answered?'disabled':''}><span class="k">${'ABCD'[i]}</span><span>${t}</span></button>`}).join('')}
+  $('bUndo').hidden=dash;$('bClear').hidden=dash;$('bCheck').hidden=dash;$('bDemo').hidden=dash;$('bReveal').hidden=!dash;$('bOverlay').hidden=st.mode!=='same';
+  $('bUndo').disabled=!st.segs.length&&!st.sel;$('bClear').disabled=!st.segs.length;
+  $('bReveal').textContent=st.revealed?'隱藏答案':'顯示答案';
+  const n=(q.demos||[]).length;$('bDemo').textContent=st.demo<0?'示範答案':(n>1?`示範答案 ${st.demo+1}/${n}`:'示範答案');
+  $('bOverlay').disabled=!(st.res&&groupFor().length>1);$('bOverlay').textContent=st.overlay?'還原':'重疊比較';
+  $('bPrev').disabled=st.idx[st.mode]===0;
+  $('bNext').disabled=st.idx[st.mode]===M.qs.length-1;
+  document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===st.mode));
+  $('dots').innerHTML=M.qs.map((_,i)=>`<button data-i="${i}" class="${store.scoreOn&&store.stars[qkey(st.mode,i)]?'done':''}" aria-current="${i===st.idx[st.mode]}" aria-label="第 ${i+1} 題">${i+1}</button>`).join('');
+  const used=ps?[...new Set(ps.map(p=>p.type))]:[];
+  $('legend').innerHTML=(st.overlay?[['--ref','第一份'],['--mov','疊上去的其他份']].map(([c,t])=>`<span><i style="background:var(${c})"></i>${t}</span>`):
+    (st.mode==='same'?['三角形','正方形','長方形','平行四邊形','直角梯形','正梯形','梯形']:['三角形','正方形','長方形','平行四邊形','直角梯形','正梯形','梯形','菱形','五邊形','六邊形']).map(t=>`<span style="${used.length&&!used.includes(t)?'opacity:.4':''}"><i style="background:${colorOf(t)}"></i>${t}</span>`)).join('');
+  renderScore();
+}
+function renderScore(){const v=Object.values(store.stars);
+  $('stars').textContent=v.reduce((a,b)=>a+b,0);$('done').textContent=v.length;$('all').textContent=ALL;$('progBar').style.width=(100*v.length/ALL)+'%';
+  $('scoreStars').hidden=!store.scoreOn;$('scoreDone').hidden=!store.scoreOn;$('bReset').hidden=!store.scoreOn;
+  $('bScoreOn').textContent=store.scoreOn?'計分：開':'計分：關'}
+
+const IDLE={dash:['先圈出題目的重點字，再選答案吧！','數一數每一份有幾條邊，有沒有平行的邊？'],guide:['先圈出題目的重點字，再動手分割！','點兩個格點就可以畫線，畫好按「檢查」。'],same:['先圈出題目的重點字，再動手分割！','記住：每一份的形狀和大小都要相同。']};
+function mood(m){const b=$('buddy');b.classList.remove('happy','think');void b.getBoundingClientRect();if(m)b.classList.add(m)}
+function showResult(cls,head,lines){const r=$('result');r.className='result '+cls;
+  mood(cls==='ok'?'happy':cls==='bad'?'think':'');
+  if(cls==='ok'&&!/答案/.test(head))confetti();
+  r.innerHTML=`<div class="head">${head}</div>`+lines.filter(Boolean).map(l=>`<p class="${l[1]||''}">${l[0]}</p>`).join('');
+  r.classList.remove('pop');void r.offsetWidth;r.classList.add('pop')}
+function hideResult(){const r=$('result');const t=IDLE[st.mode];r.className='result idle';r.innerHTML=`<div class="head">${t[0]}</div><p class="sub">${t[1]}</p>`;mood('')}
+// 成功時的彩紙（三角形和方形）
+function confetti(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const c=$('confetti');const ctx=c.getContext('2d');
+  const W=c.width=innerWidth*devicePixelRatio,H=c.height=innerHeight*devicePixelRatio;const cs=getComputedStyle(document.documentElement);
+  const cols=['--orange','--blue','--purple','--green','--pink','--yellow'].map(v=>cs.getPropertyValue(v).trim());
+  const ps=Array.from({length:90},()=>({x:W*(.25+Math.random()*.5),y:H*.45,vx:(Math.random()-.5)*W*.022,vy:-(Math.random()*.028+.012)*H,r:Math.random()*6,vr:(Math.random()-.5)*.3,s:(8+Math.random()*10)*devicePixelRatio,c:cols[Math.random()*cols.length|0],t:Math.random()<.5}));
+  const t0=performance.now();const g=H*.0009;
+  (function f(now){ctx.clearRect(0,0,W,H);const el=now-t0;ps.forEach(p=>{p.vy+=g;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.beginPath();
+    if(p.t){ctx.moveTo(0,-p.s/2);ctx.lineTo(p.s/2,p.s/2);ctx.lineTo(-p.s/2,p.s/2)}else ctx.rect(-p.s/2,-p.s/3,p.s,p.s*.66);ctx.fill();ctx.restore()});
+    if(el<1800)requestAnimationFrame(f);else ctx.clearRect(0,0,W,H)})(t0)}
+
+// 計分：第 1 次成功 3★，第 2 次 2★，之後 1★；看過示範答案就不計分
+function award(){if(!store.scoreOn)return null;const k=qkey();
+  if(store.stars[k])return['這題之前已完成，可以再試其他方法！','sub'];
+  if(st.usedDemo)return['看過示範答案，這題不計分。試試下一題吧！','sub'];
+  const n=st.tries<=1?3:st.tries===2?2:1;store.stars[k]=n;save();
+  return[`+${'★'.repeat(n)}　${n===3?'一次就成功，好厲害！':n===2?'再試一次就成功了！':'堅持到底，做得好！'}`,'gain']}
+
+function check(fromDemo){
+  const q=cur();stopOverlay(true);
+  if(!st.segs.length){st.res=null;render();showResult('bad','請先畫分割線',[['點兩個格點，就可以畫出一條線段。','sub']]);return}
+  if(!fromDemo)st.tries++;
+  const res=computePieces(q.poly,st.segs);st.res=res;const ps=res.pieces;const got=tally(ps);
+  const ok=meets(ps,q.need);
+  const lines=[[`現在得出：${countText(got)||'未能分割'}`]];
+  if(!ok)lines.push([q.need.total?`需要：分割成 ${q.need.total} 份`:`需要：${countText(q.need)}`,'sub']);
+  let sameOk=true;
+  if(st.mode==='same'&&ps.some(p=>p.pts.length>4)){sameOk=false;lines.push(['每一份都要是三角形或四邊形，不可以有五邊形或以上 ✘'])}
+  if(q.same){const g=groupFor();
+    if(g.length>1){const ref=g[0];const cong=congruentAll(g);
+      const sim=g.every(p=>matchPoly(p.pts,ref.pts,true));const eqA=g.every(p=>Math.abs(p.area-ref.area)<1e-6);
+      sameOk=cong;const who=q.same==='all'?'各份':'各個'+q.same;
+      lines.push([cong?`${who}的形狀和大小都相同 ✔`:`${who}的形狀${sim?'相同':'不相同'}，大小${eqA?'相同':'不相同'} ✘`]);
+      if(!cong&&eqA&&!sim)lines.push(['大小相同，但形狀不同，所以不符合要求。','sub']);
+      lines.push(['按「重疊比較」，把它們疊在一起看看。','sub'])}}
+  if(res.dangling)lines.push(['提示：有分割線未由圖形的一邊連到另一邊。','sub']);
+  const all=ok&&sameOk;
+  if(all&&!fromDemo)lines.push(award());
+  else if(!all&&!fromDemo&&store.scoreOn&&!store.stars[qkey()])lines.push(['再試一次，仍然可以得到星星！','sub']);
+  render();showResult(all?'ok':'bad',fromDemo?'示範答案':all?'符合指示！':'未符合指示',lines);
+}
+
+// 重疊比較：其他份移到第一份上面，第一份藍色、其他份橙色
+function overlayItems(){const g=groupFor();const ref=g[0],cB=centroid(ref.pts);
+  return g.slice(1).map(p=>{const m=matchPoly(p.pts,ref.pts,false);return{p,cA:centroid(p.pts),cB,th:m?m.th:0,refl:m?m.refl:false,ok:!!m}})}
+function stopOverlay(silent){if(st.anim)cancelAnimationFrame(st.anim);st.anim=null;const was=st.overlay;st.overlay=false;if(!silent&&was)render()}
+function overlay(){
+  if(st.anim)return;const g=groupFor();if(g.length<2)return;
+  const back=st.overlay;st.overlay=true;render();
+  const items=overlayItems();const allOk=items.every(i=>i.ok);
+  const gEl=document.getElementById('ghosts');
+  gEl.innerHTML=items.map(it=>`<path d="${path(it.p.pts)}" fill="var(--mov)" fill-opacity=".6" stroke="var(--ink)" stroke-width=".06" stroke-dasharray=".14 .1" stroke-linejoin="round"/>`).join('');
+  const els=[...gEl.children];
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;const dur=reduce?1:1400;const t0=performance.now();
+  const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  const place=e=>els.forEach((el,i)=>{const it=items[i];const tx=it.cA[0]+(it.cB[0]-it.cA[0])*e,ty=it.cA[1]+(it.cB[1]-it.cA[1])*e;
+      el.setAttribute('transform',`translate(${tx} ${ty}) rotate(${it.th*e*180/Math.PI}) scale(1 ${it.refl?1-2*e:1}) translate(${-it.cA[0]} ${-it.cA[1]})`)});
+  place(back?1:0);
+  const frame=now=>{const t=Math.min(1,(now-t0)/dur);const e=back?1-ease(t):ease(t);place(e);
+    if(t<1){st.anim=requestAnimationFrame(frame);return}
+    st.anim=null;
+    if(back){st.overlay=false;render();return}
+    els.forEach((el,i)=>{el.setAttribute('stroke',items[i].ok?'var(--ok)':'var(--bad)');el.setAttribute('stroke-width','.11');el.removeAttribute('stroke-dasharray')});
+    $('bOverlay').textContent='還原';
+    showResult(allOk?'ok':'bad',allOk?'完全重疊！':'不能完全重疊',
+      [[allOk?'橙色的每一份都剛好蓋住藍色的第一份，形狀和大小都相同 ✔':'看看藍色或橙色露出來的地方，那裏就是不相同的部分 ✘'],
+       !allOk&&items.some(i=>i.ok)?['綠框的那幾份可以完全重疊，紅框的不可以。','sub']:null,
+       allOk&&items.some(i=>i.refl)?['有些份要先翻轉，才可以完全重疊。','sub']:null])};
+  st.anim=requestAnimationFrame(frame);
+}
+
+function resetQ(){stopOverlay(true);Object.assign(st,{segs:[],sel:null,res:null,revealed:false,demo:-1,tries:0,usedDemo:false,wrong:new Set(),answered:false,marks:[]});hideResult();save();render()}
+function changed(){stopOverlay(true);st.res=null;st.demo=-1;hideResult();render()}
+
+svg.addEventListener('pointerdown',e=>{
+  if(st.mode==='dash'||st.anim)return;const q=cur();
+  const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());
+  const gx=Math.round(p.x),gy=Math.round(p.y);
+  if(gx<0||gx>q.W||gy<0||gy>q.H||Math.hypot(p.x-gx,p.y-gy)>.45)return;
+  if(st.overlay){stopOverlay(true)}
+  if(!st.sel)st.sel=[gx,gy];
+  else if(st.sel[0]===gx&&st.sel[1]===gy)st.sel=null;
+  else{st.segs.push([st.sel[0],st.sel[1],gx,gy]);st.sel=null;changed();return}
+  render()});
+$('opts').addEventListener('click',e=>{const b=e.target.closest('.opt');if(!b||b.disabled)return;const q=cur();const{right}=makeOptions(answerOf(q),st.idx.dash*31+7);
+  st.tries++;
+  if(b.dataset.t===right){st.answered=true;const gain=st.revealed?(st.usedDemo=true,award()):award();
+    st.res=computePieces(q.poly,q.cuts);render();showResult('ok','答對了！',[[`得出：${right}`],gain])}
+  else{st.wrong.add(b.dataset.t);render();showResult('bad','再想一想',[['數一數每一份有幾條邊，再看看有沒有平行的邊。','sub'],store.scoreOn&&!store.stars[qkey()]?['答對仍然可以得到星星！','sub']:null])}});
+$('bUndo').onclick=()=>{if(st.sel)st.sel=null;else st.segs.pop();changed()};
+$('bClear').onclick=()=>{st.segs=[];st.sel=null;changed()};
+$('bCheck').onclick=()=>check(false);
+$('bDemo').onclick=()=>{const q=cur();const n=q.demos.length;const d=(st.demo+1)%n;st.usedDemo=true;st.segs=q.demos[d].map(s=>s.slice());st.sel=null;check(true);st.demo=d;render()};
+$('bOverlay').onclick=overlay;
+$('bReveal').onclick=()=>{const q=cur();st.revealed=!st.revealed;
+  if(st.revealed){if(!st.answered)st.usedDemo=true;st.res=computePieces(q.poly,q.cuts);render();showResult('ok','答案',[[`得出：${countText(answerOf(q))}`]])}
+  else{if(!st.answered)st.res=null;hideResult();render()}};
+$('bPrev').onclick=()=>{if(st.idx[st.mode]>0){st.idx[st.mode]--;resetQ()}};
+$('bNext').onclick=()=>{if(st.idx[st.mode]<BANK[st.mode].qs.length-1){st.idx[st.mode]++;resetQ()}};
+$('dots').onclick=e=>{const b=e.target.closest('button');if(b){st.idx[st.mode]=+b.dataset.i;resetQ()}};
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{st.mode=b.dataset.mode;resetQ()});
+$('bScoreOn').onclick=()=>{store.scoreOn=!store.scoreOn;save();render()};
+let resetArm=null;
+$('bReset').onclick=()=>{const b=$('bReset');
+  if(!resetArm){b.textContent='確定重設？';b.classList.add('warn');resetArm=setTimeout(()=>{resetArm=null;b.textContent='重設分數';b.classList.remove('warn')},3000);return}
+  clearTimeout(resetArm);resetArm=null;b.textContent='重設分數';b.classList.remove('warn');store.stars={};save();render()};
+
+// 圈重點字：學生自己用螢光筆或圈出題目中的重點字
+st.marks=[];st.pen=2;let instrText='';let painting=null;
+function drawInstr(text){const ch=[...text];
+  if(text!==instrText||st.marks.length!==ch.length){if(text!==instrText)st.marks=ch.map(()=>0);instrText=text}
+  $('instr').innerHTML=ch.map((c,i)=>`<span class="ch" data-i="${i}">${c}</span>`).join('');paintChars()}
+function paintChars(){const els=$('instr').children;const m=st.marks;
+  for(let i=0;i<els.length;i++){const v=m[i]||0;let c='ch';if(v===1)c+=' m1';if(v===2){c+=' m2';if(m[i-1]!==2)c+=' cs';if(m[i+1]!==2)c+=' ce'}els[i].className=c}}
+function markAt(x,y){const el=document.elementFromPoint(x,y);const s=el&&el.closest?el.closest('#instr .ch'):null;
+  if(s){const i=+s.dataset.i;if(st.marks[i]!==painting){st.marks[i]=painting;paintChars()}}}
+const ins=$('instr');
+ins.addEventListener('pointerdown',e=>{const s=e.target.closest('.ch');if(!s)return;e.preventDefault();const i=+s.dataset.i;
+  painting=st.pen===0?0:(st.marks[i]===st.pen?0:st.pen);try{ins.setPointerCapture(e.pointerId)}catch(_){}
+  markAt(e.clientX,e.clientY)});
+ins.addEventListener('pointermove',e=>{if(painting!==null)markAt(e.clientX,e.clientY)});
+['pointerup','pointercancel','lostpointercapture'].forEach(t=>ins.addEventListener(t,()=>painting=null));
+document.querySelectorAll('.pen').forEach(b=>b.onclick=()=>{st.pen=+b.dataset.pen;document.querySelectorAll('.pen').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+$('bMarkClear').onclick=()=>{st.marks=st.marks.map(()=>0);paintChars()};
+hideResult();render();
+</script>
+
+</body>
+</html>
